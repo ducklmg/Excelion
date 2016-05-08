@@ -1,0 +1,46 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Linq;
+using System.Text;
+using System.Windows.Forms;
+using System.Xml.Linq;
+using Microsoft.Office.Tools.Excel;
+using Microsoft.VisualStudio.Tools.Applications.Runtime;
+using Excel = Microsoft.Office.Interop.Excel;
+using Office = Microsoft.Office.Core;
+
+namespace Excelion
+{
+    public partial class ThisWorkbook
+    {
+        private void ThisWorkbook_Startup(object sender, System.EventArgs e)
+        {
+        }
+
+        private void ThisWorkbook_Shutdown(object sender, System.EventArgs e)
+        {
+        }
+
+		private void ThisWorkbook_OnBeforeSave(bool SaveAsUI, ref bool Cancel)
+		{
+			Cancel = true;
+		}
+
+		#region VSTO Designer generated code
+
+		/// <summary>
+		/// Required method for Designer support - do not modify
+		/// the contents of this method with the code editor.
+		/// </summary>
+		private void InternalStartup()
+        {
+			this.BeforeSave += new Microsoft.Office.Interop.Excel.WorkbookEvents_BeforeSaveEventHandler(this.ThisWorkbook_OnBeforeSave);
+			this.Startup += new System.EventHandler(this.ThisWorkbook_Startup);
+			this.Shutdown += new System.EventHandler(this.ThisWorkbook_Shutdown);
+
+		}
+
+		#endregion
+	}
+}
