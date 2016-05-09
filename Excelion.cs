@@ -14,6 +14,9 @@ namespace Excelion
 		int mActiveLang = 0;
 		string mEmptyStringValue = null;
 
+		public string[] Languages { get { return mLanguages; } }
+		public Dictionary<string, string[]> Table { get { return mTable; } }
+
 		static public StringTable Load(string filePath)
 		{
 			return new StringTable(File.ReadAllText(filePath, Encoding.UTF8));
@@ -82,9 +85,12 @@ namespace Excelion
 
 		public int GetLanguageIndex(string lang)
 		{
-			for( int i = 0; i < mLanguages.Length; i++ )
-				if( lang.Equals(mLanguages[i], StringComparison.OrdinalIgnoreCase) )
-					return i;
+			if( mLanguages != null )
+			{
+				for( int i = 0; i < mLanguages.Length; i++ )
+					if( lang.Equals(mLanguages[i], StringComparison.OrdinalIgnoreCase) )
+						return i;
+			}
 
 			return 0;
 		}
@@ -111,12 +117,15 @@ namespace Excelion
 
 		public string GetString(string id, int langIdx)
 		{
-			string[] values;
-			if( mTable.TryGetValue(id, out values) )
+			if( mTable != null )
 			{
-				if( 0 <= langIdx && langIdx < values.Length )
+				string[] values;
+				if( mTable.TryGetValue(id, out values) )
 				{
-					return values[langIdx];
+					if( 0 <= langIdx && langIdx < values.Length )
+					{
+						return values[langIdx];
+					}
 				}
 			}
 
