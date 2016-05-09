@@ -117,6 +117,7 @@
     <Compile Include="ThisWorkbook.Designer.cs">
       <DependentUpon>ThisWorkbook.Designer.xml</DependentUpon>
     </Compile>
+    <Compile Include="Util.cs" />
     <EmbeddedResource Include="ExcelionRibbon.resx">
       <DependentUpon>ExcelionRibbon.cs</DependentUpon>
     </EmbeddedResource>
