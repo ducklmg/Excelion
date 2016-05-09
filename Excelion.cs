@@ -118,168 +118,148 @@ namespace Excelion
 			mTable = table;
 		}
 
-        class CsvParser
-        {
-			enum Token
+		class CsvParser
+		{
+			/* RFC 4180 : "Common Format and MIME Type for Comma-Separated Values (CSV) Files"
+				file = [header CRLF] record *(CRLF record) [CRLF]
+				header = name *(COMMA name)
+				record = field *(COMMA field)
+				name = field
+				field = (escaped / non-escaped)
+				escaped = DQUOTE *(TEXTDATA / COMMA / CR / LF / 2DQUOTE) DQUOTE
+				non-escaped = *TEXTDATA
+				COMMA = %x2C
+				CR = %x0D
+				DQUOTE =  %x22
+				LF = %x0A
+				CRLF = CR LF
+				TEXTDATA =  %x20-21 / %x23-2B / %x2D-7E
+			*/
+			string mText;
+			int mPos;
+			int mLength;
+
+			StringBuilder mStrBuilder;
+			List<string> mFields;
+
+			public CsvParser(string csv)
 			{
-				Character,
-				EOF,
-				NewLine,
-				Comma,
-				Quote,
+				mText = csv;
+				mPos = 0;
+				mLength = mText.Length;
+
+				mStrBuilder = new StringBuilder(256);
+				mFields = new List<string>(8);
 			}
 
-			StringBuilder mBuilder;
-            string mText;
-            int mPos;
-			char mChar;
-			bool mEndOfLine;
-
-			public bool EOF { get { return mPos == mText.Length; } }
-
-			Token NextChar()
+			public IEnumerable<string[]> Records
 			{
-				if( EOF )
-					return Token.EOF;
-
-				char ch = mText[mPos++];
-
-				switch( ch )
+				get
 				{
-					case '\n':
-						return Token.NewLine;
-					case '\r':
-						return NextChar();
-					case ',':
-						return Token.Comma;
-					case '"':
-						return Token.Quote;
-					case '\\':
-						if( EOF )
-							return Token.EOF;
+					var record = GetRecord();
+					if( record == null )
+						yield break;
 
-						char nextCh = mText[mPos];
-						switch( nextCh )
-						{
-							case 'b': mChar = '\b'; break;
-							case 'f': mChar = '\f'; break;
-							case 'n': mChar = '\n'; break;
-							case 'r': mChar = '\r'; break;
-							case 't': mChar = '\t'; break;
-
-							case '/': mChar = '/'; break;
-							case '"': mChar = '"'; break;
-							case '\'': mChar = '\''; break;
-							case '\\': mChar = '\\'; break;
-
-							// unrecognized sequence. ignore backslash
-							default:
-								return NextChar();
-						}
-
-						mPos++;
-						return Token.Character;
-
-					default:
-						mChar = ch;
-						return Token.Character;
+					yield return record;
 				}
 			}
 
-			string FetchValue()
+			public string[] GetRecord()
 			{
-				mBuilder.Clear();
+				if( mPos == mLength )
+					return null;
 
-
-
-				bool quoteMode = mText[mPos] == '"';
-
-
-
-
-				Token token = NextChar();
-				if( token == Token.Quote )
-				{
-					quoteMode = true;
-					token = NextChar();
-				}
+				mFields.Clear();
 
 				while( true )
 				{
-					switch( token )
-					{
-						case Token.Character:
-							mBuilder.Append(mChar);
-							break;
+					string field = GetField();
+					if( field == null )
+						break;
 
-						case Token.Quote:
-							if( quoteMode )
-							{
-								string value = mBuilder.ToString();
-
-								var comma = NextChar();
-								if( comma != Token.Comma )
-									throw new FormatException();
-
-								return value;
-							}
-							else
-							{
-								mBuilder.Append(mChar);
-							}
-							break;
-
-						case Token.NewLine:
-							mEndOfLine = true;
-							return mBuilder.ToString();
-
-						case Token.EOF:
-							return mBuilder.ToString();
-
-						case Token.Comma:
-							if( quoteMode )
-							{
-								mBuilder.Append(mChar);
-							}
-							else
-							{
-								return mBuilder.ToString();
-							}
-							break;
-					}
-				}
-			}
-
-			int findChar(int startPos, char ch)
-			{
-				for( int i = startPos; i < mText.Length; i++ )
-				{
-					if( mText[i] == ch )
-						return i;
+					mFields.Add(field);
 				}
 
-				return -1;
+				return mFields.ToArray();
 			}
 
-			void str()
+			string GetField()
 			{
-				if( mText[mPos] == '"' )
-				{
-					int start = mPos + 1;
-					int end = findChar(start, '"');
-					if( end == -1 )
-						;
+				if( mPos == mLength )
+					return null;
 
-					if( end + 1 < mText.Length && mText[end + 1] == '"' )
-						;
+				if( NextIsCRLF )
+				{
+					mPos += 2;
+					return null;
+				}
+
+				if( mText[mPos]==QUOTE )
+				{
+					return GetQuoteString();
 				}
 				else
 				{
-					int start = mPos;
-					int end = findChar(start, ',');
-
+					return GetString();
 				}
 			}
-        }
+
+			private string GetString()
+			{
+				mStrBuilder.Clear();
+
+				while( mPos < mLength )
+				{
+					char ch = mText[mPos];
+					if( ch == '\r' || ch == '\n' )
+						break;
+
+					mPos++;
+
+					if( ch == COMMA )
+						break;
+
+					mStrBuilder.Append(ch);
+				}
+
+				return mStrBuilder.ToString();
+			}
+
+			private string GetQuoteString()
+			{
+				mStrBuilder.Clear();
+
+				while( mPos < mLength )
+				{
+					char ch = mText[mPos++];
+					if( ch == QUOTE )
+					{
+						bool doubleQuote = mPos < mLength && mText[mPos + 1] == QUOTE;
+						if( doubleQuote )
+							mPos++;
+						else
+							break;
+					}
+
+					mStrBuilder.Append(ch);
+				}
+
+				if( mPos < mLength && mText[mPos] == COMMA )
+					mPos++;
+
+				return mStrBuilder.ToString();
+			}
+
+			const char COMMA = ',';
+			const char QUOTE = '"';
+
+			bool NextIsCRLF
+			{
+				get
+				{
+					return mPos + 1 < mLength && mText[mPos] == '\r' && mText[mPos + 1] == '\n';
+				}
+			}
+		}
 	}
 }
