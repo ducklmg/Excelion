@@ -92,12 +92,14 @@ namespace Excelion
 						return i;
 			}
 
-			return 0;
+			return -1;
 		}
 
 		public void SetActiveLanguage(string lang)
 		{
 			mActiveLang = GetLanguageIndex(lang);
+			if( mActiveLang == -1 )
+				mActiveLang = 0;
 		}
 
 		public string GetActiveLanguage()
@@ -122,14 +124,45 @@ namespace Excelion
 				string[] values;
 				if( mTable.TryGetValue(id, out values) )
 				{
+					if( langIdx == -1 )
+						langIdx = 0;
+
 					if( 0 <= langIdx && langIdx < values.Length )
 					{
-						return values[langIdx];
+						string v = values[langIdx];
+						if( v.IsValid() )
+						{
+							return v;
+						}
 					}
 				}
 			}
 
 			return mEmptyStringValue;
+		}
+
+		public void SetString(string id, int langIdx, string str)
+		{
+			if( mTable != null )
+			{
+				string[] values;
+				if( mTable.TryGetValue(id, out values) )
+				{
+					if( values.Length <= langIdx )
+					{
+						string[] newValues = new string[langIdx + 1];
+						Array.Copy(values, newValues, values.Length);
+						values = newValues;
+					}
+				}
+				else
+				{
+					values = new string[langIdx + 1];
+				}
+
+				values[langIdx] = str;
+				mTable[id] = values;
+			}
 		}
 
 		public void SetEmptyStringValue(string emptyStr)
@@ -139,8 +172,8 @@ namespace Excelion
 	}
 }
 
-/* Below is MiniJson from https://gist.github.com/darktable/1411710.
- * Modified slightly. (search with 'ducklmg')
+/*
+ * Below is slightly modified MiniJson (from https://gist.github.com/darktable/1411710).
  */
 
 #region MiniJson
@@ -732,7 +765,7 @@ namespace MiniJSON
 							}
 							*/
 
-							//ducklmg : string will be encoded as UTF8, so we don't need a codepoint notation.
+							//ducklmg : string will be encoded as UTF8, so we don't need a codepoint notation. (regard to non-english characters)
 							builder.Append(c);
 							break;
 					}

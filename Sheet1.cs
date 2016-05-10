@@ -38,8 +38,14 @@ namespace Excelion
 
 		public StringTable Read()
 		{
-			object[,] data = this.UsedRange.Value;
+			return Read(this.UsedRange);
+		}
 
+		public static StringTable Read(Excel.Range usedRange)
+		{
+			object[,] data = usedRange.Value;
+
+			// header
 			var languages = new List<string>();
 			int columns = data.GetUpperBound(1);
 
@@ -52,6 +58,7 @@ namespace Excelion
 				languages.Add(langName);
 			}
 
+			// table
 			var table = new Dictionary<string, string[]>();
 			int rows = data.GetUpperBound(0);
 
@@ -64,7 +71,11 @@ namespace Excelion
 
 					for( int c = 0; c < languages.Count; c++ )
 					{
-						values[c] = data[i, c + 2] as string;
+						string v = data[i, c + 2] as string;
+						if( v == null )
+							v = String.Empty;
+
+						values[c] = v;
 					}
 
 					table[id] = values;
@@ -74,24 +85,39 @@ namespace Excelion
 			return new StringTable(languages.ToArray(), table);
 		}
 
-		public void Fill(StringTable strtab)
+		public void Write(StringTable strtab)
 		{
-			// format
 			var languages = strtab.Languages;
-			for( int i = 1; i <= languages.Length; i++ )
+			var table = strtab.Table;
+
+			// header
+			for( int i = 0; i < languages.Length; i++ )
 			{
-				Excel.Range colRange = this.Columns[i];
-				colRange.
+				Cells[1, i + 2] = languages[i];
 			}
-		}
 
-		void SetColumnFormat(int columnIndex, string name, double width, bool wrapText)
-		{
-			var column = this.Columns[columnIndex];
+			// table
+			string[,] data = new string[table.Count, languages.Length + 1];
 
-			column.Cell[1, 1] = name;
-			column.WrapText = wrapText;
-			column.Width = width;
+			int row = 0;
+			foreach( var item in table )
+			{
+				data[row, 0] = item.Key;
+
+				for( int col = 0; col < item.Value.Length; col++ )
+				{
+					string v = item.Value[col];
+					if( v != null && v.StartsWith("'") )        // prepend additional one, if a value starts with quotation mark. it's excel rule :(
+						v = "'" + v;
+
+					data[row, col + 1] = v;
+				}
+
+				row++;
+			}
+
+			var tableRange = Range[Cells[2, 1], Cells[table.Count + 1, languages.Length + 1]];
+			tableRange.Value = data;                // for speed, set cell values in one call
 		}
 	}
 }
